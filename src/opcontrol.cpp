@@ -73,7 +73,7 @@ void opcontrol()
 		  Left joystick controls left wheels, right joystick controls right
 		  wheels.
 		 */
-		if (mode = TANK_CONTROL)
+		if (mode == TANK_CONTROL)
 		{
 			int left = sigmoid_map[master.get_analog(ANALOG_LEFT_Y) + 127];
 			int right = sigmoid_map[master.get_analog(ANALOG_RIGHT_Y) + 127];
@@ -87,7 +87,7 @@ void opcontrol()
 		  Left joystick controls the entire robot. Up/down for forward/backwards,
 		  left/right for turning.
 		*/
-		else if (mode = ARCADE_CONTROL)
+		else if (mode == ARCADE_CONTROL)
 		{
 			int forward = sigmoid_map[master.get_analog(ANALOG_LEFT_Y) + 127];
 			int steer = sigmoid_map[master.get_analog(ANALOG_LEFT_X) + 127];
@@ -101,7 +101,7 @@ void opcontrol()
 		  In this mode the robot does tank drive, but changes the speed on each side by random amounts.
 		  (Imagine robot is on fire)
 		*/
-		else if (mode = LUDICROUS_MODE)
+		else if (mode == LUDICROUS_MODE)
 		{
 			int left = sigmoid_map[master.get_analog(ANALOG_LEFT_Y) + 127];
 			int right = sigmoid_map[master.get_analog(ANALOG_RIGHT_Y) + 127];
