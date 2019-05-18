@@ -39,6 +39,8 @@
 /**
  * You should add more #includes here
  */
+#include <ctime>    // For time()
+#include <cstdlib>  // For srand() and rand()
 //#include "okapi/api.hpp"
 //#include "pros/api_legacy.h"
 
