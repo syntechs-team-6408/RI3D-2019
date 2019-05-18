@@ -11,7 +11,7 @@ enum CONTROL_STYLE { ARCADE_CONTROL, TANK_CONTROL, LUDICROUS_MODE };
     If the horizontal input is at 25%, it only has 5% of the power, reducing the amount
    that the robot will slowly veer off course fron an imperfect control stick.
 
-    Lookup table to reduce computation
+    A lookup table of pre-computed values is used to reduce computation.
     */
 int sigmoidMap[255] = {
     -127, -127, -127, -127, -127, -127, -127, -127, -127, -127, -127, -127, -127, -127,
@@ -101,7 +101,7 @@ void opcontrol() {
 			luModL += (rand() % LU_FLAME_INTENSITY * 2) - LU_FLAME_INTENSITY;
 			luModR += (rand() % LU_FLAME_INTENSITY * 2) - LU_FLAME_INTENSITY;
 
-			// Keep modifier within half the speed so robot isn't imposible to control.
+			// Keep modifier within half the speed so robot isn't impossible to control.
 			if (luModL > 127) {
 				luModL = 127;
 			} else if (luModL < -127) {
@@ -124,13 +124,13 @@ void opcontrol() {
 		  Switches from tank to arcade and vice versa when all four shoulder
 		  buttons are held down.
 
-		  1 second cooldown between switches.
+		  0.5 second cooldown between switches.
 		*/
 		switchCooldown--;
 		if (master.get_digital(DIGITAL_L1) && master.get_digital(DIGITAL_L2) &&
 		    master.get_digital(DIGITAL_R1) && master.get_digital(DIGITAL_R2) &&
 		    switchCooldown <= 0) {
-			// Toggle mode
+			// Toggle modes
 			if (mode = TANK_CONTROL) {
 				mode = ARCADE_CONTROL;
 			} else if (mode = ARCADE_CONTROL) {
