@@ -41,6 +41,7 @@
  */
 #include <ctime>    // For time()
 #include <cstdlib>  // For srand() and rand()
+
 //#include "okapi/api.hpp"
 //#include "pros/api_legacy.h"
 
@@ -70,6 +71,24 @@ extern "C"
     void disabled(void);
     void competition_initialize(void);
     void opcontrol(void);
+
+    /* 
+       Robot hardware variables. 
+       Defined in initialize.cpp.
+    */
+    extern pros::Controller master;
+	extern pros::Controller partner;
+
+	extern pros::Motor leftFrontDrive;
+	extern pros::Motor rightFrontDrive;
+	extern pros::Motor leftBackDrive;
+	extern pros::Motor rightBackDrive;
+
+	extern pros::Motor reverseFourLeft;
+	extern pros::Motor reverseFourRight;
+
+	extern pros::Motor intakeLeft;
+	extern pros::Motor intakeRight;
 }
 #ifdef __cplusplus
 #endif

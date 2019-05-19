@@ -2,6 +2,7 @@
 
 enum CONTROL_STYLE { ARCADE_CONTROL, TANK_CONTROL, LUDICROUS_MODE };
 
+enum DR4B_STATE { MOVE_MAX, MOVE_MIN, MOVE_MANUAL };
 /*
     Maps from (-127) -> 127 to itself using the function
     (((128 * pow(4, ((abs(x)-50)/12.5)))/(pow(4, ((abs(x)-50)/12.5))+1))) - 1) * sign(x)
@@ -12,7 +13,7 @@ enum CONTROL_STYLE { ARCADE_CONTROL, TANK_CONTROL, LUDICROUS_MODE };
    that the robot will slowly veer off course fron an imperfect control stick.
 
     A lookup table of pre-computed values is used to reduce computation.
-    */
+*/
 int sigmoidMap[255] = {
     -127, -127, -127, -127, -127, -127, -127, -127, -127, -127, -127, -127, -127, -127,
     -127, -127, -127, -127, -127, -127, -127, -127, -127, -127, -127, -127, -127, -127,
@@ -52,28 +53,33 @@ void luInit() {
  * operator control task will be stopped. Re-enabling the robot will restart the
  * task, not resume it from where it left off.
  */
+const double FULL_DR4B_EXTENSION_DEG = 40;
+
 void opcontrol() {
-	pros::Controller master(pros::E_CONTROLLER_MASTER);
-	pros::Controller partner(pros::E_CONTROLLER_PARTNER);
-	pros::Motor left_mtr(1);
-	pros::Motor right_mtr(2);
-	CONTROL_STYLE mode = TANK_CONTROL;
+	CONTROL_STYLE controlMode = TANK_CONTROL;
+	DR4B_STATE fourBarState = MOVE_MANUAL;
 	short switchCooldown = 0;
 
 	int luModL = 0;
 	int luModR = 0;
+	long counter;
+
 	while (true) {
+#pragma region 'Drive'
 		/*
 		  Tank control - Default control style.
 
 		  Left joystick controls left wheels, right joystick controls right wheels.
 		 */
-		if (mode == TANK_CONTROL) {
+		if (controlMode == TANK_CONTROL) {
 			int left = sigmoidMap[master.get_analog(ANALOG_LEFT_Y) + 127];
 			int right = sigmoidMap[master.get_analog(ANALOG_RIGHT_Y) + 127];
 
-			left_mtr = left;
-			right_mtr = right;
+			leftFrontDrive = left;
+			leftBackDrive = left;
+
+			rightFrontDrive = right;
+			rightBackDrive = right;
 		}
 		/*
 		  Arcade control
@@ -81,12 +87,15 @@ void opcontrol() {
 		  Left joystick controls the entire robot. Up/down for forward/backwards,
 		  left/right for turning.
 		*/
-		else if (mode == ARCADE_CONTROL) {
+		else if (controlMode == ARCADE_CONTROL) {
 			int forward = sigmoidMap[master.get_analog(ANALOG_LEFT_Y) + 127];
 			int steer = sigmoidMap[master.get_analog(ANALOG_LEFT_X) + 127];
 
-			left_mtr = forward + steer;
-			right_mtr = forward - steer;
+			leftFrontDrive = forward + steer;
+			leftBackDrive = forward + steer;
+
+			rightFrontDrive = forward - steer;
+			rightBackDrive = forward - steer;
 		}
 		/*
 		  Training mode
@@ -94,7 +103,7 @@ void opcontrol() {
 		  In this mode the robot does tank drive, but changes the speed on each side by
 		  random amounts. (Imagine robot is on fire)
 		*/
-		else if (mode == LUDICROUS_MODE) {
+		else if (controlMode == LUDICROUS_MODE) {
 			int left = sigmoidMap[master.get_analog(ANALOG_LEFT_Y) + 127];
 			int right = sigmoidMap[master.get_analog(ANALOG_RIGHT_Y) + 127];
 
@@ -114,10 +123,12 @@ void opcontrol() {
 			}
 
 			// Apply fire modifier to robot.
-			left_mtr = left + luModL;
-			right_mtr = right - luModR;
-		}
+			leftFrontDrive = left + luModL;
+			leftBackDrive = left + luModL;
 
+			rightFrontDrive = left - luModL;
+			rightBackDrive = right - luModR;
+		}
 		/*
 		  Control style switching logic.
 
@@ -131,15 +142,75 @@ void opcontrol() {
 		    master.get_digital(DIGITAL_R1) && master.get_digital(DIGITAL_R2) &&
 		    switchCooldown <= 0) {
 			// Toggle modes
-			if (mode = TANK_CONTROL) {
-				mode = ARCADE_CONTROL;
-			} else if (mode = ARCADE_CONTROL) {
-				mode = LUDICROUS_MODE;
+			if (controlMode = TANK_CONTROL) {
+				controlMode = ARCADE_CONTROL;
+			} else if (controlMode = ARCADE_CONTROL) {
+				controlMode = LUDICROUS_MODE;
 				luInit();
-			} else if (mode = LUDICROUS_MODE) {
-				mode = TANK_CONTROL;
+			} else if (controlMode = LUDICROUS_MODE) {
+				controlMode = TANK_CONTROL;
 			}
 			switchCooldown = 25;
+		}
+#pragma endregion
+
+#pragma region 'DR4B'
+		/*
+		    Double reverse four bar control.
+
+		    X - Raise
+		    B - Lower
+
+		    ↑ - All the way up unless L1 is pressed
+		    ↓ - All the way down unlesss L2 is pressed
+		    ← - Move up + outtake
+		*/
+
+		// Manual movement
+		if (fourBarState == MOVE_MANUAL) {
+			if (master.get_digital(DIGITAL_X)) {
+				reverseFourLeft = 127;
+				reverseFourRight = 127;
+			} else if (master.get_digital(DIGITAL_B)) {
+				reverseFourLeft = -127;
+				reverseFourRight = -127;
+			} else {
+				reverseFourLeft = 0;
+				reverseFourRight = 0;
+			}
+		} else {
+			if (reverseFourLeft.get_position() > FULL_DR4B_EXTENSION_DEG - 5 &&
+			    reverseFourRight.get_position() > FULL_DR4B_EXTENSION_DEG - 5 &&
+			    fourBarState == MOVE_MAX) {
+				fourBarState = MOVE_MANUAL;
+				reverseFourLeft = 0;
+				reverseFourRight = 0;
+			} else if (reverseFourLeft.get_position() > 5 &&
+			           reverseFourRight.get_position() > 5 && fourBarState == MOVE_MIN) {
+				fourBarState = MOVE_MANUAL;
+				reverseFourLeft = 0;
+				reverseFourRight = 0;
+			}
+		}
+		// Move to highest
+		if (master.get_digital(DIGITAL_UP)) {
+			fourBarState = MOVE_MAX;
+
+			// TODO: actually measure this
+			reverseFourLeft.move_absolute(FULL_DR4B_EXTENSION_DEG, 127);
+			reverseFourRight.move_absolute(FULL_DR4B_EXTENSION_DEG, 127);
+		}
+		// Move to lowest
+		else if (master.get_digital(DIGITAL_DOWN)) {
+			fourBarState = MOVE_MIN;
+
+			reverseFourLeft.move_absolute(0, -127);
+			reverseFourRight.move_absolute(0, -127);
+		}
+#pragma endregion
+		counter++;
+		if(counter % 25 == 0){
+			master.print(0,0,"%d, %d", reverseFourLeft.get_position(), reverseFourRight.get_position());
 		}
 		pros::delay(20);
 	}
