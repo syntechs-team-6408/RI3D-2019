@@ -208,9 +208,27 @@ void opcontrol() {
 			reverseFourRight.move_absolute(0, -127);
 		}
 #pragma endregion
+
+#pragma region "Intake/Claw"
+		/*
+		    Y - Intake/Close
+		    A - Outtake/Open
+		*/
+		if (master.get_digital(DIGITAL_Y)) {
+			intakeLeft = 127;
+			intakeRight = 127;
+		} else if (master.get_digital(DIGITAL_A)) {
+			intakeLeft = -127;
+			intakeRight = -127;
+		} else {
+			intakeLeft = 0;
+			intakeRight = 0;
+		}
+#pragma endregion
 		counter++;
-		if(counter % 25 == 0){
-			master.print(0,0,"%d, %d", reverseFourLeft.get_position(), reverseFourRight.get_position());
+		if (counter % 25 == 0) {
+			master.print(0, 0, "%f, %f", reverseFourLeft.get_position(),
+			             reverseFourRight.get_position());
 		}
 		pros::delay(20);
 	}
